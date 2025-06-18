@@ -1,0 +1,32 @@
+import { Observable } from 'rxjs';
+import { Widget, WidgetState, WidgetEvent, WidgetEventType, DataBinding, PerformanceMetrics, EventHandler } from './types';
+export declare class WidgetEngine {
+    private widgets;
+    private widgetStates;
+    private eventStreams;
+    private dataSubscriptions;
+    private performanceMetrics;
+    private destroyed$;
+    constructor();
+    createWidget(config: Partial<Widget>): Widget;
+    destroyWidget(widgetId: string): void;
+    getWidgetState(widgetId: string): WidgetState | undefined;
+    updateWidgetState(widgetId: string, updates: Partial<WidgetState>): void;
+    subscribeToWidgetState(widgetId: string): Observable<WidgetState> | undefined;
+    bindData(widgetId: string, binding: DataBinding): void;
+    addEventListener(widgetId: string, eventType: WidgetEventType, handler: EventHandler): void;
+    emitEvent(widgetId: string, event: Partial<WidgetEvent>): void;
+    getPerformanceMetrics(widgetId: string): PerformanceMetrics | undefined;
+    recordPerformanceMetric(widgetId: string, metric: keyof PerformanceMetrics, value?: number): void;
+    private generateId;
+    private createInitialState;
+    private createInitialMetrics;
+    private transitionLifecycle;
+    private createDataStream;
+    private updateWidgetData;
+    private propagateEvent;
+    private estimateMemoryUsage;
+    private setupPerformanceMonitoring;
+    destroy(): void;
+}
+export declare const widgetEngine: WidgetEngine;

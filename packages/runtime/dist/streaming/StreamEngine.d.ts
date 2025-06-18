@@ -1,0 +1,32 @@
+import { Observable } from 'rxjs';
+import type { StreamMessage, StreamConfig, StreamConnection, StreamMetrics, StreamBackpressureHandler, StreamErrorRecovery, StreamMonitor, BatchedMessage, StreamDebugEvent } from './types';
+export declare class StreamEngine implements StreamMonitor {
+    private connections;
+    private messageSubject;
+    private debugSubject;
+    private metricsSubject;
+    private backpressureHandler?;
+    private errorRecovery?;
+    private metricsUpdateInterval?;
+    readonly debug$: Observable<StreamDebugEvent>;
+    readonly metrics$: Observable<Map<string, StreamMetrics>>;
+    constructor();
+    setBackpressureHandler(handler: StreamBackpressureHandler): void;
+    setErrorRecovery(recovery: StreamErrorRecovery): void;
+    createConnection(sourceNodeId: string, targetNodeId: string, sourcePort: string, targetPort: string, config?: Partial<StreamConfig>): string;
+    private processMessage;
+    private handleBackpressure;
+    private handleError;
+    getConnection(connectionId: string): StreamConnection | undefined;
+    closeConnection(connectionId: string): void;
+    createBatchedStream<T>(connectionId: string, config?: Partial<StreamConfig>): Observable<BatchedMessage<T>>;
+    onMessage(message: StreamMessage, connectionId: string): void;
+    onError(_error: Error, connectionId: string): void;
+    getMetrics(connectionId: string): StreamMetrics | undefined;
+    resetMetrics(connectionId: string): void;
+    private createInitialMetrics;
+    private startMetricsCollection;
+    private updateMetrics;
+    private debugEvent;
+    destroy(): void;
+}

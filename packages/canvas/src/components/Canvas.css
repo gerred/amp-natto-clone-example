@@ -1,0 +1,128 @@
+.canvas-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background-color: #f8fafc;
+}
+
+.canvas-main {
+  flex: 1;
+  height: 100%;
+  outline: none;
+  position: relative;
+}
+
+.canvas-main:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+/* React Flow customizations */
+.react-flow__edge-path {
+  stroke-width: 2;
+  stroke: #64748b;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 3;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 3;
+}
+
+.react-flow__connection-line {
+  stroke: #3b82f6;
+  stroke-width: 2;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  background: #64748b;
+  border-radius: 50%;
+}
+
+.react-flow__handle:hover {
+  background: #3b82f6;
+  transform: scale(1.2);
+}
+
+.react-flow__handle.connecting {
+  background: #3b82f6;
+  transform: scale(1.2);
+}
+
+.react-flow__handle-top {
+  top: -4px;
+}
+
+.react-flow__handle-bottom {
+  bottom: -4px;
+}
+
+.react-flow__handle-left {
+  left: -4px;
+}
+
+.react-flow__handle-right {
+  right: -4px;
+}
+
+/* Selection box */
+.react-flow__selection {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+}
+
+/* Node selection */
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* Performance optimizations */
+.react-flow__node {
+  will-change: transform;
+}
+
+.react-flow__edge {
+  will-change: stroke;
+}
+
+/* Minimap styling */
+.react-flow__minimap {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__controls {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls button {
+  border: none;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.react-flow__controls button:hover {
+  background: #f1f5f9;
+  color: #3b82f6;
+}
+
+.react-flow__controls button:last-child {
+  border-bottom: none;
+}

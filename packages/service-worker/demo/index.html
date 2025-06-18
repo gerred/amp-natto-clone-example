@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node Flow Service Worker Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f0f0f0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .workflow-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .logs {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Node Flow Service Worker Demo</h1>
+    
+    <div id="status" class="status info">
+        Initializing Service Worker...
+    </div>
+    
+    <div class="workflow-container">
+        <h3>Workflow Management</h3>
+        <button id="registerWorkflow">Register Test Workflow</button>
+        <button id="listWorkflows">List Workflows</button>
+        <button id="executeWorkflow">Execute Workflow</button>
+        <button id="deleteWorkflow">Delete Workflow</button>
+        
+        <div id="workflowStatus"></div>
+    </div>
+    
+    <div class="workflow-container">
+        <h3>Multi-Tab Communication</h3>
+        <button id="broadcastMessage">Send Broadcast</button>
+        <button id="requestSync">Request Sync</button>
+        
+        <div id="broadcastStatus"></div>
+    </div>
+    
+    <div class="workflow-container">
+        <h3>Debug & Monitoring</h3>
+        <button id="getMetrics">Get Metrics</button>
+        <button id="ping">Ping Service Worker</button>
+        <button id="clearLogs">Clear Logs</button>
+        
+        <div id="debugInfo"></div>
+    </div>
+    
+    <div class="workflow-container">
+        <h3>System Logs</h3>
+        <div id="logs" class="logs"></div>
+    </div>
+
+    <script type="module">
+        import { createServiceWorkerClient } from '../dist/sw-client.js';
+
+        class ServiceWorkerDemo {
+            constructor() {
+                this.client = null;
+                this.api = null;
+                this.currentWorkflowId = null;
+                this.currentExecutionId = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.log('Initializing Service Worker client...');
+                    
+                    this.client = await createServiceWorkerClient({
+                        scriptUrl: '../dist/service-worker.js',
+                        enableBroadcast: true,
+                        onStateChange: (state) => this.log(`SW state: ${state}`),
+                        onError: (error) => this.logError(`SW error: ${error.message}`)
+                    });
+
+                    this.api = this.client.getAPI();
+                    this.updateStatus('Service Worker ready!', 'success');
+                    
+                    this.setupEventListeners();
+                    this.setupBroadcastListeners();
+                    
+                    this.log('Service Worker demo ready');
+                } catch (error) {
+                    this.logError(`Initialization failed: ${error.message}`);
+                    this.updateStatus(`Error: ${error.message}`, 'error');
+                }
+            }
+
+            setupEventListeners() {
+                document.getElementById('registerWorkflow').onclick = () => this.registerWorkflow();
+                document.getElementById('listWorkflows').onclick = () => this.listWorkflows();
+                document.getElementById('executeWorkflow').onclick = () => this.executeWorkflow();
+                document.getElementById('deleteWorkflow').onclick = () => this.deleteWorkflow();
+                
+                document.getElementById('broadcastMessage').onclick = () => this.broadcastMessage();
+                document.getElementById('requestSync').onclick = () => this.requestSync();
+                
+                document.getElementById('getMetrics').onclick = () => this.getMetrics();
+                document.getElementById('ping').onclick = () => this.ping();
+                document.getElementById('clearLogs').onclick = () => this.clearLogs();
+            }
+
+            setupBroadcastListeners() {
+                this.client.subscribeToBroadcast('*', (message) => {
+                    this.log(`Broadcast received: ${message.type}`, JSON.stringify(message.payload, null, 2));
+                });
+            }
+
+            async registerWorkflow() {
+                try {
+                    const workflow = this.createTestWorkflow();
+                    await this.api.registerWorkflow(workflow);
+                    this.currentWorkflowId = workflow.id;
+                    this.log(`Workflow registered: ${workflow.id}`);
+                    this.updateWorkflowStatus(`Workflow "${workflow.name}" registered successfully`);
+                } catch (error) {
+                    this.logError(`Failed to register workflow: ${error.message}`);
+                }
+            }
+
+            async listWorkflows() {
+                try {
+                    const workflows = await this.api.listWorkflows();
+                    this.log(`Found ${workflows.length} workflows`);
+                    
+                    const workflowList = workflows.map(w => `- ${w.name} (${w.id})`).join('\n');
+                    this.updateWorkflowStatus(`Workflows:\n${workflowList || 'No workflows found'}`);
+                } catch (error) {
+                    this.logError(`Failed to list workflows: ${error.message}`);
+                }
+            }
+
+            async executeWorkflow() {
+                if (!this.currentWorkflowId) {
+                    this.updateWorkflowStatus('Please register a workflow first');
+                    return;
+                }
+
+                try {
+                    const executionId = await this.api.executeWorkflow(this.currentWorkflowId);
+                    this.currentExecutionId = executionId;
+                    this.log(`Workflow execution started: ${executionId}`);
+                    this.updateWorkflowStatus(`Executing workflow... (ID: ${executionId})`);
+                    
+                    // Monitor execution
+                    this.monitorExecution(executionId);
+                } catch (error) {
+                    this.logError(`Failed to execute workflow: ${error.message}`);
+                }
+            }
+
+            async deleteWorkflow() {
+                if (!this.currentWorkflowId) {
+                    this.updateWorkflowStatus('No workflow to delete');
+                    return;
+                }
+
+                try {
+                    await this.api.deleteWorkflow(this.currentWorkflowId);
+                    this.log(`Workflow deleted: ${this.currentWorkflowId}`);
+                    this.updateWorkflowStatus('Workflow deleted successfully');
+                    this.currentWorkflowId = null;
+                } catch (error) {
+                    this.logError(`Failed to delete workflow: ${error.message}`);
+                }
+            }
+
+            async monitorExecution(executionId) {
+                const checkExecution = async () => {
+                    try {
+                        const execution = await this.api.getExecution(executionId);
+                        if (execution) {
+                            this.updateWorkflowStatus(`Execution ${execution.state}: ${execution.id}`);
+                            
+                            if (execution.state === 'completed' || execution.state === 'failed' || execution.state === 'cancelled') {
+                                this.log(`Execution ${execution.state} in ${execution.duration}ms`);
+                                return;
+                            }
+                        }
+                        
+                        // Continue monitoring
+                        setTimeout(checkExecution, 1000);
+                    } catch (error) {
+                        this.logError(`Failed to check execution: ${error.message}`);
+                    }
+                };
+                
+                checkExecution();
+            }
+
+            broadcastMessage() {
+                const message = {
+                    type: 'demo-message',
+                    data: `Hello from tab ${Date.now()}`,
+                    timestamp: new Date()
+                };
+                
+                this.client.broadcast('demo-message', message);
+                this.log('Broadcast message sent');
+                this.updateBroadcastStatus('Message broadcasted to other tabs');
+            }
+
+            requestSync() {
+                this.client.requestSync();
+                this.log('Sync request sent');
+                this.updateBroadcastStatus('Sync requested from other tabs');
+            }
+
+            async getMetrics() {
+                try {
+                    const metrics = await this.api.getMetrics();
+                    this.log('Metrics retrieved', JSON.stringify(metrics, null, 2));
+                    this.updateDebugInfo(`Metrics: ${JSON.stringify(metrics, null, 2)}`);
+                } catch (error) {
+                    this.logError(`Failed to get metrics: ${error.message}`);
+                }
+            }
+
+            async ping() {
+                try {
+                    const result = await this.api.ping();
+                    this.log('Ping successful', JSON.stringify(result, null, 2));
+                    this.updateDebugInfo(`Ping: ${JSON.stringify(result, null, 2)}`);
+                } catch (error) {
+                    this.logError(`Ping failed: ${error.message}`);
+                }
+            }
+
+            clearLogs() {
+                document.getElementById('logs').innerHTML = '';
+            }
+
+            createTestWorkflow() {
+                return {
+                    id: `workflow-${Date.now()}`,
+                    name: 'Demo Workflow',
+                    version: '1.0.0',
+                    nodes: [
+                        {
+                            id: 'input-1',
+                            type: 'input',
+                            position: { x: 0, y: 0 },
+                            data: { value: 'Hello World!' },
+                            inputs: [],
+                            outputs: [{ id: 'out', name: 'output', type: 'string' }]
+                        },
+                        {
+                            id: 'transform-1',
+                            type: 'transform',
+                            position: { x: 200, y: 0 },
+                            data: { transform: 'input.toUpperCase()' },
+                            inputs: [{ id: 'in', name: 'input', type: 'string' }],
+                            outputs: [{ id: 'out', name: 'output', type: 'string' }]
+                        },
+                        {
+                            id: 'delay-1',
+                            type: 'delay',
+                            position: { x: 400, y: 0 },
+                            data: { delay: 1000 },
+                            inputs: [{ id: 'in', name: 'input', type: 'string' }],
+                            outputs: [{ id: 'out', name: 'output', type: 'string' }]
+                        },
+                        {
+                            id: 'output-1',
+                            type: 'output',
+                            position: { x: 600, y: 0 },
+                            data: {},
+                            inputs: [{ id: 'in', name: 'input', type: 'string' }],
+                            outputs: []
+                        }
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-1',
+                            source: 'input-1',
+                            target: 'transform-1',
+                            sourceHandle: 'out',
+                            targetHandle: 'in'
+                        },
+                        {
+                            id: 'edge-2',
+                            source: 'transform-1',
+                            target: 'delay-1',
+                            sourceHandle: 'out',
+                            targetHandle: 'in'
+                        },
+                        {
+                            id: 'edge-3',
+                            source: 'delay-1',
+                            target: 'output-1',
+                            sourceHandle: 'out',
+                            targetHandle: 'in'
+                        }
+                    ],
+                    metadata: {
+                        description: 'Demo workflow for testing Service Worker functionality',
+                        tags: ['demo', 'test'],
+                        author: 'demo'
+                    },
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+            }
+
+            log(message, details = '') {
+                const timestamp = new Date().toISOString();
+                const logsElement = document.getElementById('logs');
+                logsElement.innerHTML += `[${timestamp}] ${message}\n`;
+                if (details) {
+                    logsElement.innerHTML += `${details}\n`;
+                }
+                logsElement.scrollTop = logsElement.scrollHeight;
+            }
+
+            logError(message) {
+                this.log(`ERROR: ${message}`);
+            }
+
+            updateStatus(message, type = 'info') {
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = message;
+                statusElement.className = `status ${type}`;
+            }
+
+            updateWorkflowStatus(message) {
+                document.getElementById('workflowStatus').textContent = message;
+            }
+
+            updateBroadcastStatus(message) {
+                document.getElementById('broadcastStatus').textContent = message;
+            }
+
+            updateDebugInfo(message) {
+                document.getElementById('debugInfo').textContent = message;
+            }
+        }
+
+        // Initialize demo when page loads
+        new ServiceWorkerDemo();
+    </script>
+</body>
+</html>
